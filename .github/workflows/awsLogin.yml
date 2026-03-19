@@ -1,0 +1,39 @@
+name: awsLogin
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate-aws-credentials:
+    name: Validate AWS Credentials
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Test login and display account info
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+          ARN=$(aws sts get-caller-identity --query 'Arn' --output text)
+          USER_ID=$(aws sts get-caller-identity --query 'UserId' --output text)
+
+          echo "AWS login test: SUCCESS"
+          echo "Account ID: ${ACCOUNT_ID}"
+          echo "ARN: ${ARN}"
+          echo "User/Role ID: ${USER_ID}"
+
+          # Account alias may require extra IAM permissions; do not fail if unavailable.
+          ACCOUNT_ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text 2>/dev/null || true)
+          if [ -n "${ACCOUNT_ALIAS}" ] && [ "${ACCOUNT_ALIAS}" != "None" ]; then
+            echo "Account Alias: ${ACCOUNT_ALIAS}"
+          else
+            echo "Account Alias: not available (missing permission or alias not set)"
+          fi
